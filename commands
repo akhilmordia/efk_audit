@@ -1,0 +1,9 @@
+docker-compose up --force-recreate --build kibana
+
+KIBANA_LOG_FILE_PATH="`docker inspect --format='{{.LogPath}}' kibana_7.16.2`" \
+ELASTICSEARCH_LOG_FILE_PATH="`docker inspect --format='{{.LogPath}}' elasticsearch_7.16.2`" \
+docker-compose up --force-recreate --build fluentd
+
+
+sudo find /var/lib/docker/containers -type f -name "*-json.log"
+#-delete

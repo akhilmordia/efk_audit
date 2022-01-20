@@ -1,0 +1,8 @@
+cluster.name: "docker-cluster"
+network.host: 0.0.0.0
+http.port: 9200
+#xpack.security.audit.enabled: true
+#xpack.security.audit.logfile.events.include: [_all]
+#xpack.security.audit.logfile.events.exclude: [run_as_granted]
+
+#Author - Akhil Mordia

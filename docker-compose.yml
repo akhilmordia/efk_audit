@@ -1,0 +1,96 @@
+version: '3.4'
+
+services:
+  es01:
+    build: 
+      context: ./elasticsearch/.
+      args:
+        ES_VERSION: ${ES_VERSION}
+        S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+        S3_SECRET_KEY: ${S3_SECRET_KEY}
+        S3_REPOSITORY_CLIENT_NAME: ${S3_REPOSITORY_CLIENT_NAME}
+    container_name: elasticsearch_${ES_VERSION}
+    environment:
+      - "discovery.type=single-node"
+      - ELASTIC_USERNAME=${ES_USERNAME}
+      - ELASTIC_PASSWORD=${ES_PASSWORD}
+      - xpack.security.enabled=true
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - "0.0.0.0:9200:9200"
+      - "0.0.0.0:9300:9300"
+    restart: always
+    volumes:
+      - ./elasticsearch/data:/usr/share/elasticsearch/data
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "500m"
+        labels: "service"
+    labels:
+      service: "elasticsearch"
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:${ES_VERSION}
+    container_name: kibana_${ES_VERSION}
+    environment:
+      - ELASTICSEARCH_URL="http://${ES_HOST}:${ES_PORT}"
+      - ELASTICSEARCH_HOSTS="http://${ES_HOST}:${ES_PORT}"
+      - ELASTICSEARCH_USERNAME=${ES_USERNAME}
+      - ELASTICSEARCH_PASSWORD=${ES_PASSWORD}
+      - xpack.security.enabled=true
+    links:
+      - es01
+    ports:
+      - "0.0.0.0:5601:5601"
+    restart: always
+    depends_on:
+      - es01
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "500m"
+        labels: "service"
+    labels:
+      service: "kibana"
+
+# docker-compose run -e KIBANA_LOG_FILE_PATH="`docker inspect --format='{{.LogPath}}' kibana_7.16.2`" fluentd
+  fluentd:
+    container_name: fluentd
+    build: ./fluentd/.
+    ports:
+      - "0.0.0.0:24224:24224"
+      - "0.0.0.0:24224:24224/udp"
+#    network_mode: host
+    restart: always
+#    links:
+#      - es01
+#    depends_on:
+#      - es01
+#      - kibana
+    volumes:
+      - /var/lib/docker/containers/:/var/lib/docker/containers/:ro
+      - ./fluentd/taildb:/home/taildb
+    environment:
+      - ES_HOST=${ES_HOST}
+      - ES_PORT=${ES_PORT}
+      - ES_USERNAME=${ES_USERNAME}
+      - ES_PASSWORD=${ES_PASSWORD}
+      - ES_STANDARD_LOGS_INDEX=${ES_STANDARD_LOGS_INDEX}
+      - ES_AUDIT_LOGS_INDEX=${ES_AUDIT_LOGS_INDEX}
+      - FLUENTD_PORT=${FLUENTD_PORT}
+#      - KIBANA_LOG_FILE_PATH=${KIBANA_LOG_FILE_PATH}
+#      - ELASTICSEARCH_LOG_FILE_PATH=${ELASTICSEARCH_LOG_FILE_PATH}
+    logging:
+      driver: "local"
+      options:
+        max-size: "500m"
+
+networks:
+  elastic:
+    driver: bridge
